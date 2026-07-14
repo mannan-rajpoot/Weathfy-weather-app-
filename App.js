@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, StatusBar } from 'react-native';
+
+// Import all screens from your screens folder
 import IntroSplashScreen from './screens/IntroSplashScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import SetupScreen from './screens/SetupScreen';
+import HomeScreen from './screens/HomeScreen'; // This is the new dashboard
 
 export default function App() {
-  const [stage, setStage] = useState('intro'); // intro -> onboarding -> setup -> main
+  // Navigation State: intro -> onboarding -> setup -> main
+  const [stage, setStage] = useState('intro'); 
   const [userProfile, setUserProfile] = useState(null);
 
+  // Function called when the user finishes the SetupScreen
   const handleSetupComplete = (data) => {
     setUserProfile(data);
     setStage('main');
@@ -15,23 +20,35 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      {/* Set StatusBar to light to match the dark professional theme */}
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
       
-      {stage === 'intro' && <IntroSplashScreen onFinish={() => setStage('onboarding')} />}
-      {stage === 'onboarding' && <OnboardingScreen onFinish={() => setStage('setup')} />}
-      {stage === 'setup' && <SetupScreen onFinish={handleSetupComplete} />}
+      {/* 1. Intro Splash Screen */}
+      {stage === 'intro' && (
+        <IntroSplashScreen onFinish={() => setStage('onboarding')} />
+      )}
 
+      {/* 2. Onboarding Carousel/Info */}
+      {stage === 'onboarding' && (
+        <OnboardingScreen onFinish={() => setStage('setup')} />
+      )}
+
+      {/* 3. Setup Profile (Name & Location) */}
+      {stage === 'setup' && (
+        <SetupScreen onFinish={handleSetupComplete} />
+      )}
+
+      {/* 4. Final Professional Weather Home Screen */}
       {stage === 'main' && (
-        <View style={styles.mainApp}>
-          <Text style={{ color: '#FFF', fontSize: 20 }}>Welcome, {userProfile?.username}!</Text>
-          <Text style={{ color: '#666' }}>Location set to: {userProfile?.location}</Text>
-        </View>
+        <HomeScreen userProfile={userProfile} />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#121212' },
-  mainApp: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+  container: { 
+    flex: 1, 
+    backgroundColor: '#000' // Pure black background for a premium OLED look
+  },
 });

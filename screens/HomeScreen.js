@@ -104,7 +104,7 @@ const HomeScreen = ({ userProfile }) => {
             </View>
             <View style={styles.headerRight}>
               <View style={styles.locBox}>
-                <MaterialCommunityIcons name="map-marker-outline" size={scale(14)} color="#FFF" />
+                <MaterialCommunityIcons name="map-marker-outline" size={scale(14)} color="#0A84FF" />
                 <Text style={styles.locationText}>{weatherData?.name || userProfile?.location || 'Unknown'}</Text>
               </View>
               <Text style={styles.liveClock}>{formatTime(currentTime)}</Text>

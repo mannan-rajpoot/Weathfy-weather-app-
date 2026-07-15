@@ -2,37 +2,32 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView,
   Dimensions, Animated, KeyboardAvoidingView, Platform, ScrollView,
-  ActivityIndicator, Alert, Linking
+  ActivityIndicator, Alert, StatusBar, Modal
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
 
-const SMART_DATA = [
-  { id: '1', country: 'USA', cities: ['New York', 'Los Angeles', 'Chicago', 'Miami'] },
-  { id: '2', country: 'UK', cities: ['London', 'Manchester', 'Birmingham'] },
-  { id: '3', country: 'India', cities: ['Mumbai', 'Delhi', 'Bangalore'] },
-  { id: '4', country: 'Canada', cities: ['Toronto', 'Vancouver', 'Montreal'] },
-];
-
 const SetupScreen = ({ onFinish }) => {
   const [username, setUsername] = useState('');
   const [location, setLocation] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState(SMART_DATA[0]);
   const [isLoadingLoc, setIsLoadingLoc] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false); // Modal State
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 800, useNativeDriver: true })
+      Animated.timing(fadeAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 20, friction: 7, useNativeDriver: true })
     ]).start();
   }, []);
 
-  const handleGetCurrentLocation = async () => {
+  // Function to trigger the actual location logic
+  const startLocationDetection = async () => {
+    setIsModalVisible(false);
     setIsLoadingLoc(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -60,8 +55,47 @@ const SetupScreen = ({ onFinish }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* --- Custom Location Popup --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isModalVisible}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <MaterialCommunityIcons name="map-marker-radius" size={48} color="#0A84FF" />
+            <Text style={styles.modalTitle}>Device Location</Text>
+            <Text style={styles.modalText}>
+              Weathfy uses your location to provide accurate local weather updates and alerts.
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancel} 
+                onPress={() => setIsModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Not now</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.modalConfirm} 
+                onPress={startLocationDetection}
+              >
+                <Text style={styles.modalConfirmText}>Allow</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             
             <View style={styles.header}>
@@ -74,10 +108,10 @@ const SetupScreen = ({ onFinish }) => {
             <View style={styles.section}>
               <Text style={styles.label}>Display Name</Text>
               <View style={styles.inputWrapper}>
-                <MaterialCommunityIcons name="account-outline" size={22} color="#666" />
+                <MaterialCommunityIcons name="account-outline" size={24} color="#666" />
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your name"
+                  placeholder="What should we call you?"
                   placeholderTextColor="#444"
                   value={username}
                   onChangeText={setUsername}
@@ -89,10 +123,10 @@ const SetupScreen = ({ onFinish }) => {
             <View style={styles.section}>
               <Text style={styles.label}>Home Location</Text>
               <View style={styles.inputWrapper}>
-                <MaterialCommunityIcons name="map-marker-outline" size={22} color="#666" />
+                <MaterialCommunityIcons name="map-marker-outline" size={24} color="#666" />
                 <TextInput
                   style={styles.input}
-                  placeholder="City Name"
+                  placeholder="Enter your city"
                   placeholderTextColor="#444"
                   value={location}
                   onChangeText={setLocation}
@@ -100,34 +134,14 @@ const SetupScreen = ({ onFinish }) => {
                 {isLoadingLoc && <ActivityIndicator size="small" color="#0A84FF" />}
               </View>
 
-              <TouchableOpacity style={styles.gpsBtn} onPress={handleGetCurrentLocation}>
+              <TouchableOpacity 
+                style={styles.gpsBtn} 
+                onPress={() => setIsModalVisible(true)} // Show Popup first
+                activeOpacity={0.7}
+              >
                 <MaterialCommunityIcons name="crosshairs-gps" size={18} color="#0A84FF" />
                 <Text style={styles.gpsText}>Detect My Location</Text>
               </TouchableOpacity>
-            </View>
-
-            {/* Quick Select Section */}
-            <View style={styles.section}>
-              <Text style={styles.smallLabel}>Quick Select</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.countryList}>
-                {SMART_DATA.map((item) => (
-                  <TouchableOpacity 
-                    key={item.id} 
-                    onPress={() => setSelectedCountry(item)}
-                    style={[styles.countryTab, selectedCountry.id === item.id && styles.activeTab]}
-                  >
-                    <Text style={[styles.tabText, selectedCountry.id === item.id && styles.activeTabText]}>{item.country}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <View style={styles.cityGrid}>
-                {selectedCountry.cities.map((city) => (
-                  <TouchableOpacity key={city} style={styles.chip} onPress={() => setLocation(city)}>
-                    <Text style={styles.chipText}>{city}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
             </View>
 
           </Animated.View>
@@ -138,6 +152,7 @@ const SetupScreen = ({ onFinish }) => {
             style={[styles.finishBtn, (!username || !location) && styles.disabledBtn]} 
             onPress={() => onFinish({ username, location })}
             disabled={!username || !location}
+            activeOpacity={0.9}
           >
             <Text style={styles.finishBtnText}>Launch Weathfy</Text>
             <MaterialCommunityIcons name="rocket-launch" size={22} color="#000" />
@@ -150,34 +165,47 @@ const SetupScreen = ({ onFinish }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  scrollContent: { paddingBottom: 120 },
+  scrollContent: { paddingBottom: 140 },
   content: { padding: 25 },
-  header: { marginBottom: 40, marginTop: 20 },
-  appName: { color: '#0A84FF', fontSize: 16, fontWeight: '900', letterSpacing: 3, marginBottom: 8 },
-  title: { color: '#FFF', fontSize: 32, fontWeight: '800' },
-  subtitle: { color: '#666', fontSize: 16, marginTop: 5 },
+  header: { marginBottom: 45, marginTop: 20 },
+  appName: { color: '#ffffff', fontSize: 14, fontFamily: 'Poppins-Bold', fontWeight: '900', letterSpacing: 4, marginBottom: 10 },
+  title: { color: '#FFF', fontSize: 34, fontFamily: 'Poppins-Bold', fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { color: '#888', fontSize: 16, marginTop: 8 },
   section: { marginBottom: 35 },
-  label: { color: '#FFF', fontSize: 14, fontWeight: '700', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  label: { color: '#FFF', fontSize: 13, fontFamily: 'Poppins-Bold', fontWeight: '700', marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1.5 },
   inputWrapper: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#1C1C1E',
-    borderRadius: 18, paddingHorizontal: 15, height: 65, borderWidth: 1, borderColor: '#2C2C2E',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#151517',
+    borderRadius: 20, paddingHorizontal: 18, height: 68, borderWidth: 1, borderColor: '#262629',
   },
-  input: { flex: 1, color: '#FFF', fontSize: 16, marginLeft: 10 },
-  gpsBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 15 },
-  gpsText: { color: '#0A84FF', marginLeft: 8, fontWeight: '700' },
-  smallLabel: { color: '#444', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', marginBottom: 15 },
-  countryList: { marginBottom: 20 },
-  countryTab: { marginRight: 25, paddingBottom: 8 },
-  activeTab: { borderBottomWidth: 2, borderBottomColor: '#0A84FF' },
-  tabText: { color: '#444', fontWeight: '700', fontSize: 14 },
-  activeTabText: { color: '#FFF' },
-  cityGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: '#1C1C1E', borderWidth: 1, borderColor: '#2C2C2E' },
-  chipText: { color: '#AAA', fontWeight: '600' },
+  input: { flex: 1, color: '#FFF', fontSize: 16, marginLeft: 12 },
+  gpsBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 18, padding: 5 },
+  gpsText: { color: '#ffffff', marginLeft: 10, fontWeight: '700', fontSize: 14 },
+  
+  // --- Modal Styles ---
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#151517', borderRadius: 30, padding: 30, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#262629' },
+  modalTitle: { color: '#FFF', fontSize: 20, fontFamily: 'Poppins-Bold', fontWeight: '800', marginTop: 15 },
+  modalText: { color: '#888', textAlign: 'center', fontSize: 14, marginTop: 10, lineHeight: 22, fontFamily: 'Poppins-Regular' },
+  modalButtons: { flexDirection: 'row', marginTop: 25, gap: 12 },
+  modalCancel: { flex: 1, height: 55, justifyContent: 'center', alignItems: 'center', borderRadius: 15, backgroundColor: '#262629' },
+  modalCancelText: { color: '#FFF', fontWeight: '700' },
+  modalConfirm: { flex: 1, height: 55, justifyContent: 'center', alignItems: 'center', borderRadius: 15, backgroundColor: '#ffffff' },
+  modalConfirmText: { color: '#000', fontWeight: '900' },
+
+  // --- Footer Button (Shadow Removed) ---
   footer: { position: 'absolute', bottom: 0, width: '100%', padding: 25, backgroundColor: 'rgba(0,0,0,0.9)' },
-  finishBtn: { flexDirection: 'row', backgroundColor: '#0A84FF', height: 65, borderRadius: 22, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  finishBtn: { 
+    flexDirection: 'row', 
+    backgroundColor: '#ffffff', 
+    height: 65, 
+    borderRadius: 22, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 12,
+    // No shadow properties here for a flat look
+  },
   disabledBtn: { backgroundColor: '#1C1C1E', opacity: 0.5 },
-  finishBtnText: { color: '#000', fontSize: 18, fontWeight: '800' },
+  finishBtnText: { color: '#000', fontSize: 18, fontWeight: '900' },
 });
 
 export default SetupScreen;
